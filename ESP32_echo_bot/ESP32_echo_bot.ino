@@ -1,24 +1,28 @@
-#define USE_CLIENTSSL true  //editar melhor no vscode
-#include <AsyncTelegram2.h> //BIBLIOTECA PARA INTERFACE COM A API DO TELEGRAM
-#include <time.h> //
+#define USE_CLIENTSSL true
 #define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
+
+// DEFINIÇÃO DAS CREDENCIAIS PARA ACESSO
+#define ssid "WIFI_SSID"                                        // NOME DA REDE WIFI
+#define pass "WIFI_PASS"                                        // SENHA DA REDE WIFI
+#define token "TELEGRAM_BOT_TOKEN"                              // TOKEN DO BOT
+
+#include <AsyncTelegram2.h>
+#include <time.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
-// #if USE_CLIENTSSL
-// #include <SSLClient.h>  
-// #include "tg_certificate.h"
-// #endif
+
+#if USE_CLIENTSSL
+#include <SSLClient.h>
+#include "tg_certificate.h"
 
 WiFiClient base_client;
-// SSLClient client(base_client, TAs, (size_t)TAs_NUM, A0, 1, SSLClient::SSL_ERROR);
+SSLClient client(base_client, TAs, (size_t)TAs_NUM, A0, 1, SSLClient::SSL_ERROR);
+#endif
 
-AsyncTelegram2 myBot(base_client);
+AsyncTelegram2 myBot(client);
 
-#define ssid  "yout_ssid"     // SSID WiFi network
-#define pass  "Your_pass"     // Password  WiFi network
-#define token "your_token_here"  // Telegram token
-
-void setup() {
+void setup()
+{
   pinMode(LED_BUILTIN, OUTPUT);
   // initialize the Serial
   Serial.begin(115200);
@@ -27,16 +31,18 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, pass);
   delay(500);
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
     Serial.print('.');
     delay(500);
   }
 
+  // Sync time with NTP
+  configTzTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
+#if USE_CLIENTSSL == false
+  client.setCACert(telegram_cert);
+#endif
 
-  // configTzTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
-  // #if USE_CLIENTSSL == false
-  //   client.setCACert(telegram_cert);
-  // #endif  
   // Set the Telegram bot properies
   myBot.setUpdateTime(2000);
   myBot.setTelegramToken(token);
@@ -46,27 +52,22 @@ void setup() {
   myBot.begin() ? Serial.println("OK") : Serial.println("NOK");
 }
 
-void loop() {
-  
+void loop()
+{
+
   static uint32_t ledTime = millis();
-  if (millis() - ledTime > 150) {
+  if (millis() - ledTime > 150)
+  {
     ledTime = millis();
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
   }
 
-  TBMessage msg;
+  TBMessage msg; // VARIÁVEL LOCAL PARA RECEBER A MENSAGEM
 
-  // if there is an incoming message...
-  if (myBot.getNewMessage(msg)) {    
-    // Send a message to your public channel
-    // String message ;
-    // message += "Message from @";
-    // message += myBot.getBotName();
-    // message += ":\n";
-    // message += msg.text;
-    // Serial.println(message);
-
-    // echo the received message
+  // SE HOUVER UMA MENSAGEM NOVA
+  if (myBot.getNewMessage(msg))
+  {
+    // A MENSAGEM SERÁ DEVOLVIDA
     myBot.sendMessage(msg, msg.text);
   }
 }
